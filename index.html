@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Carbon Method</title>
+  <meta name="description" content="Tu entrenador de recomposición corporal" />
+  <meta name="theme-color" content="#08060F" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Carbon" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="manifest" href="manifest.json" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      background: #08060F;
+      font-family: 'Space Grotesk', sans-serif;
+      color: #F0ECF8;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      overflow-x: hidden;
+    }
+    input[type=number] { -webkit-appearance: none; appearance: none; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    select { -webkit-appearance: none; appearance: none; }
+
+    /* CRONÓMETRO */
+    #cronometro {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: #08060F;
+      border-bottom: 1px solid #1E1830;
+      transition: border-color 0.3s;
+    }
+    #cron-bar {
+      display: flex; align-items: center; padding: 10px 16px; gap: 12px;
+    }
+    #cron-logo { flex: 1; }
+    #cron-logo .name { font-size: 9px; letter-spacing: 0.22em; color: #5A4880; font-family: 'IBM Plex Mono', monospace; }
+    #cron-logo .method { font-size: 13px; font-weight: 700; color: #F0ECF8; letter-spacing: 0.08em; }
+    #cron-display {
+      font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 700;
+      color: #3A2860; letter-spacing: 0.05em; min-width: 68px; text-align: center;
+      transition: color 0.3s;
+    }
+    #cron-display.running { color: #C084FC; }
+    #cron-display.paused { color: #9A7FD0; }
+    .cron-btn {
+      border: none; border-radius: 8px; padding: 7px 14px;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.06em;
+      transition: opacity 0.15s;
+    }
+    #btn-start { background: linear-gradient(135deg,#C084FC,#A855F7); color: #08060F; }
+    #btn-stop  { background: #2E2050; color: #C084FC; border: 1px solid #C084FC44; display: none; }
+    #btn-reset { background: #1A1030; color: #7A6AA0; border: 1px solid #3A2060; display: none; }
+    #cron-progress { height: 2px; background: #1E1638; }
+    #cron-progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg,#C084FC,#A855F7); transition: width 1s linear; }
+    #cron-panel {
+      display: none; padding: 0 16px 12px;
+      border-top: 1px solid #1E1830;
+    }
+    #cron-panel.open { display: block; }
+    #cron-panel .panel-label { font-size: 10px; color: #5A4880; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.12em; margin-bottom: 8px; margin-top: 8px; }
+    .preset-row { display: flex; gap: 6px; }
+    .preset-btn {
+      flex: 1; padding: 7px 4px; border-radius: 8px;
+      background: #130F22; border: 1px solid #2A2040;
+      color: #6050A0; font-size: 11px; font-family: 'IBM Plex Mono', monospace;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .preset-btn.active { background: #C084FC22; border-color: #C084FC44; color: #C084FC; }
+
+    /* LAYOUT */
+    #content {
+      padding: 0 16px 90px;
+      padding-top: calc(env(safe-area-inset-top) + 70px);
+    }
+
+    /* NAV */
+    #nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #0A0814; border-top: 1px solid #1E1830;
+      display: flex; padding: 10px 0;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom));
+      z-index: 90;
+    }
+    .nav-btn {
+      flex: 1; background: transparent; border: none; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      color: #2E2050; transition: color 0.2s; padding: 4px 0;
+    }
+    .nav-btn.active { color: #C084FC; }
+    .nav-btn svg { width: 20px; height: 20px; }
+    .nav-btn span { font-size: 9px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.08em; }
+
+    /* TABS */
+    .tab { display: none; }
+    .tab.active { display: block; }
+
+    /* CARDS */
+    .card {
+      background: linear-gradient(145deg,#0E0C18,#0A0814);
+      border: 1px solid #1E1830; border-radius: 16px;
+      padding: 14px 16px; margin-bottom: 12px;
+    }
+    .card-accent {
+      background: linear-gradient(135deg,#1E1638,#130F22);
+      border: 1px solid #C084FC22;
+    }
+    .label-mono {
+      font-size: 10px; color: #4A3870;
+      font-family: 'IBM Plex Mono', monospace;
+      letter-spacing: 0.14em; margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    /* DÍA SELECTOR */
+    .dia-grid { display: flex; gap: 8px; margin-bottom: 16px; }
+    .dia-btn {
+      flex: 1; padding: 10px 4px; border-radius: 12px;
+      background: #0E0C18; border: 1px solid #1E1830;
+      cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .dia-btn.active {
+      background: #1E1638; border-color: #C084FC44;
+    }
+    .dia-btn .dia-num { font-size: 9px; font-family: 'IBM Plex Mono', monospace; color: #3A2860; letter-spacing: 0.12em; margin-bottom: 3px; }
+    .dia-btn.active .dia-num { color: #C084FC; }
+    .dia-btn .dia-foco { font-size: 11px; color: #2A2040; font-weight: 600; }
+    .dia-btn.active .dia-foco { color: #D8B4FE; }
+
+    /* EJERCICIO */
+    .ej-card {
+      background: linear-gradient(145deg,#0E0C18,#0A0814);
+      border: 1px solid #1E1830; border-radius: 14px;
+      margin-bottom: 10px; overflow: hidden;
+    }
+    .ej-header { padding: 12px 14px 10px; }
+    .ej-name { font-size: 13px; font-weight: 600; color: #F0ECF8; line-height: 1.3; margin-bottom: 8px; }
+    .ej-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .tag {
+      font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px;
+    }
+    .ej-sugerido-row {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+    }
+    .sugerido-label { font-size: 9px; color: #4A3870; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.1em; }
+    .sugerido-val { font-size: 24px; font-weight: 700; color: #C084FC; font-family: 'IBM Plex Mono', monospace; line-height: 1; }
+    .sugerido-unit { font-size: 10px; color: #6050A0; font-family: 'IBM Plex Mono', monospace; }
+
+    .series-row { display: flex; gap: 6px; }
+    .serie-col { flex: 1; }
+    .serie-label { font-size: 9px; color: #3A2860; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.1em; text-align: center; margin-bottom: 4px; }
+    .serie-input {
+      width: 100%; border-radius: 8px; text-align: center;
+      font-family: 'IBM Plex Mono', monospace; font-weight: 700;
+      outline: none; border: 1px solid;
+    }
+    .input-peso {
+      background: #130F22; border-color: #2E2050;
+      color: #C084FC; font-size: 16px; padding: 8px 4px; margin-bottom: 4px;
+    }
+    .input-reps {
+      background: #0E0C18; border-color: #1E1830;
+      color: #D8B4FE; font-size: 14px; padding: 7px 4px;
+    }
+    .signal {
+      margin-top: 10px; padding: 7px 12px; border-radius: 8px;
+      font-size: 12px; font-weight: 600;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    /* BOTÓN GUARDAR */
+    .btn-primary {
+      width: 100%; padding: 14px; border-radius: 14px; margin-top: 8px;
+      background: linear-gradient(135deg,#C084FC,#A855F7);
+      border: none; color: #08060F; font-size: 14px; font-weight: 700;
+      cursor: pointer; letter-spacing: 0.08em;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .btn-secondary {
+      padding: 8px 14px; border-radius: 10px;
+      background: #130F22; border: 1px solid #2A2040;
+      color: #7A6AA0; font-size: 11px; cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.06em;
+    }
+
+    /* HISTORIAL */
+    .sesion-card {
+      background: linear-gradient(145deg,#0E0C18,#0A0814);
+      border: 1px solid #1E1830; border-radius: 14px;
+      margin-bottom: 10px; overflow: hidden; transition: border-color 0.2s;
+    }
+    .sesion-card.open { border-color: #C084FC33; }
+    .sesion-header {
+      padding: 12px 14px; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .sesion-badge {
+      font-size: 9px; font-family: 'IBM Plex Mono', monospace;
+      color: #C084FC; background: #C084FC15; padding: 2px 8px;
+      border-radius: 99px; border: 1px solid #C084FC33;
+      letter-spacing: 0.1em; display: inline-block; margin-bottom: 5px;
+    }
+    .sesion-foco { font-size: 13px; font-weight: 600; color: #D8B4FE; }
+    .sesion-fecha { font-size: 10px; color: #4A3870; font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
+    .sesion-body { border-top: 1px solid #1E1830; padding: 12px 14px; display: none; }
+    .sesion-body.open { display: block; }
+    .ej-hist-name { font-size: 11px; color: #7A6AA0; margin-bottom: 6px; }
+    .series-hist { display: flex; gap: 6px; margin-bottom: 12px; }
+    .serie-hist-block {
+      background: #130F22; border: 1px solid #2A2040;
+      border-radius: 8px; padding: 6px 10px; text-align: center;
+    }
+    .serie-hist-peso { font-size: 13px; font-weight: 700; color: #C084FC; font-family: 'IBM Plex Mono', monospace; }
+    .serie-hist-reps { font-size: 10px; color: #6050A0; font-family: 'IBM Plex Mono', monospace; }
+
+    /* CUERPO */
+    .body-input {
+      width: 100%; background: #0E0C18; border-radius: 10px;
+      font-size: 24px; font-weight: 700; padding: 12px 14px;
+      outline: none; font-family: 'IBM Plex Mono', monospace;
+      margin-bottom: 14px;
+    }
+    .medicion-row {
+      background: linear-gradient(145deg,#0E0C18,#0A0814);
+      border: 1px solid #1E1830; border-radius: 12px;
+      padding: 12px 14px; margin-bottom: 8px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .medicion-fecha { font-size: 11px; color: #4A3870; font-family: 'IBM Plex Mono', monospace; }
+    .medicion-vals { display: flex; gap: 16px; }
+    .medicion-val { text-align: center; }
+    .medicion-num { font-size: 15px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+    .medicion-lbl { font-size: 9px; color: #4A3870; }
+
+    /* GRÁFICOS */
+    .chart-wrap { position: relative; height: 180px; margin: 10px 0; }
+    .chart-legend { display: flex; gap: 14px; justify-content: center; margin-top: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .legend-label { font-size: 10px; color: #6050A0; font-family: 'IBM Plex Mono', monospace; }
+    .ej-select {
+      width: 100%; background: #130F22; border: 1px solid #2E2050;
+      border-radius: 10px; color: #D8B4FE; font-size: 12px;
+      padding: 10px 12px; outline: none; margin-bottom: 14px;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    /* MODAL EXPORTAR */
+    #modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: #000000dd; z-index: 200;
+      align-items: flex-end;
+    }
+    #modal-overlay.open { display: flex; }
+    #modal-box {
+      background: #0E0C18; border: 1px solid #2A2040;
+      border-radius: 20px 20px 0 0; padding: 20px;
+      width: 100%; box-sizing: border-box;
+      padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    }
+    #modal-text {
+      width: 100%; background: #08060F; border: 1px solid #1E1830;
+      border-radius: 10px; color: #C0B8E0; font-size: 12px;
+      padding: 12px; font-family: 'IBM Plex Mono', monospace;
+      min-height: 160px; outline: none; resize: none;
+      margin-bottom: 10px; display: block;
+    }
+    #btn-copy {
+      width: 100%; padding: 13px; border-radius: 12px;
+      background: linear-gradient(135deg,#C084FC,#A855F7);
+      border: none; color: #08060F; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: 0.08em;
+    }
+
+    /* EMPTY STATE */
+    .empty-state { text-align: center; padding: 4rem 1rem; }
+    .empty-icon { font-size: 36px; opacity: 0.15; margin-bottom: 12px; }
+    .empty-text { font-size: 14px; color: #3A2860; }
+    .empty-sub { font-size: 12px; color: #2A2040; margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- CRONÓMETRO -->
+<div id="cronometro">
+  <div id="cron-bar">
+    <div id="cron-logo">
+      <div class="name">CARBON</div>
+      <div class="method">METHOD</div>
+    </div>
+    <div id="cron-display">00:00</div>
+    <button class="cron-btn" id="btn-start" onclick="cronStart()">START</button>
+    <button class="cron-btn" id="btn-stop"  onclick="cronStop()">STOP</button>
+    <button class="cron-btn" id="btn-reset" onclick="cronReset()">↺</button>
+    <button class="cron-btn" style="background:#130F22;border:1px solid #2A2040;color:#5A4880;padding:7px 10px;" onclick="togglePanel()">⚙</button>
+  </div>
+  <div id="cron-progress"><div id="cron-progress-bar"></div></div>
+  <div id="cron-panel">
+    <div class="panel-label">TIEMPO DE DESCANSO</div>
+    <div class="preset-row">
+      <button class="preset-btn" onclick="setPreset(60)">60s</button>
+      <button class="preset-btn active" onclick="setPreset(90)">90s</button>
+      <button class="preset-btn" onclick="setPreset(120)">120s</button>
+      <button class="preset-btn" onclick="setPreset(180)">180s</button>
+      <button class="preset-btn" id="preset-libre" onclick="setPreset(0)">↑</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTENIDO -->
+<div id="content">
+
+  <!-- TAB ENTRENAR -->
+  <div class="tab active" id="tab-entrenar">
+    <div class="dia-grid" id="dia-grid"></div>
+    <div class="card card-accent" id="dia-header"></div>
+    <div id="ejercicios-container"></div>
+    <button class="btn-primary" onclick="guardarSesion()">GUARDAR SESIÓN</button>
+  </div>
+
+  <!-- TAB CUERPO -->
+  <div class="tab" id="tab-cuerpo">
+    <div class="card">
+      <div class="label-mono" id="fecha-cuerpo"></div>
+      <div style="margin-bottom:4px;font-size:11px;color:#7A6AA0;">Peso corporal <span style="color:#C084FC;font-family:monospace">(kg)</span></div>
+      <input type="number" step="0.1" class="body-input" id="inp-peso" placeholder="—" style="border:1px solid #C084FC44;color:#C084FC;" />
+      <div style="margin-bottom:4px;font-size:11px;color:#7A6AA0;">Masa muscular <span style="color:#6AB880;font-family:monospace">(kg)</span></div>
+      <input type="number" step="0.1" class="body-input" id="inp-musculo" placeholder="—" style="border:1px solid #6AB88044;color:#6AB880;" />
+      <div style="margin-bottom:4px;font-size:11px;color:#7A6AA0;">Grasa corporal <span style="color:#E0C8FF;font-family:monospace">(%)</span></div>
+      <input type="number" step="0.1" class="body-input" id="inp-grasa" placeholder="—" style="border:1px solid #E0C8FF44;color:#E0C8FF;" />
+      <button class="btn-primary" onclick="guardarCorporal()">GUARDAR MEDICIÓN</button>
+    </div>
+    <div id="historial-corporal"></div>
+  </div>
+
+  <!-- TAB HISTORIAL -->
+  <div class="tab" id="tab-historial">
+    <div id="historial-container"></div>
+  </div>
+
+  <!-- TAB PROGRESIÓN -->
+  <div class="tab" id="tab-progresion">
+    <div class="card">
+      <div class="label-mono">COMPOSICIÓN CORPORAL</div>
+      <div class="chart-wrap"><canvas id="chart-corp"></canvas></div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#C084FC"></div><span class="legend-label">Peso</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#6AB880"></div><span class="legend-label">Músculo</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#E0C8FF"></div><span class="legend-label">Grasa %</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label-mono">PROGRESIÓN POR EJERCICIO</div>
+      <select class="ej-select" id="ej-select" onchange="renderChartEj()"></select>
+      <div class="chart-wrap"><canvas id="chart-ej"></canvas></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- NAV -->
+<div id="nav">
+  <button class="nav-btn active" id="nav-entrenar" onclick="switchTab('entrenar')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14M18 5v14M2 9h4M18 9h4M2 15h4M18 15h4"/></svg>
+    <span>Entrenar</span>
+  </button>
+  <button class="nav-btn" id="nav-cuerpo" onclick="switchTab('cuerpo')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M12 8v8M9 11h6M9 19l-2 2M15 19l2 2"/></svg>
+    <span>Cuerpo</span>
+  </button>
+  <button class="nav-btn" id="nav-historial" onclick="switchTab('historial')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    <span>Historial</span>
+  </button>
+  <button class="nav-btn" id="nav-progresion" onclick="switchTab('progresion')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span>Progresión</span>
+  </button>
+</div>
+
+<!-- MODAL EXPORTAR -->
+<div id="modal-overlay" onclick="closeModal()">
+  <div id="modal-box" onclick="event.stopPropagation()">
+    <div class="label-mono">COPIA Y PEGA EN EL CHAT</div>
+    <textarea id="modal-text" readonly onclick="this.select()"></textarea>
+    <button id="btn-copy" onclick="copyAndClose()">COPIAR Y CERRAR</button>
+  </div>
+</div>
+
+<script>
+// ─── DATOS ────────────────────────────────────────────────────────
+const RUTINA = [
+  { dia:"DÍA 1", foco:"Pecho · Espalda", sub:"Cuádriceps", ejercicios:[
+    {id:"d1e1",nombre:"Press pecho máquina wide",musculo:"Pecho",series:3,rMin:8,rMax:12,pesoIni:70},
+    {id:"d1e2",nombre:"Press inclinado máquina",musculo:"Pecho",series:3,rMin:8,rMax:12,pesoIni:60},
+    {id:"d1e3",nombre:"Remo polea",musculo:"Espalda",series:3,rMin:10,rMax:12,pesoIni:50},
+    {id:"d1e4",nombre:"Aperturas peck deck",musculo:"Pecho",series:2,rMin:12,rMax:15,pesoIni:25},
+    {id:"d1e5",nombre:"Prensa",musculo:"Pierna",series:3,rMin:8,rMax:12,pesoIni:130},
+    {id:"d1e6",nombre:"Extensión cuádriceps",musculo:"Cuádriceps",series:3,rMin:10,rMax:12,pesoIni:50},
+  ]},
+  { dia:"DÍA 2", foco:"Hombro · Brazos", sub:"Femoral · Glúteo", ejercicios:[
+    {id:"d2e1",nombre:"Press hombro máquina",musculo:"Hombro",series:3,rMin:8,rMax:12,pesoIni:60},
+    {id:"d2e2",nombre:"Jalón al pecho",musculo:"Espalda",series:3,rMin:8,rMax:12,pesoIni:60},
+    {id:"d2e3",nombre:"Elevación lateral polea",musculo:"Hombro lat.",series:3,rMin:12,rMax:15,pesoIni:4},
+    {id:"d2e4",nombre:"Curl bayesiano",musculo:"Bíceps",series:3,rMin:12,rMax:15,pesoIni:10},
+    {id:"d2e5",nombre:"Tríceps polea barra V",musculo:"Tríceps",series:3,rMin:10,rMax:12,pesoIni:30},
+    {id:"d2e6",nombre:"Curl femoral",musculo:"Femoral",series:3,rMin:10,rMax:12,pesoIni:50},
+    {id:"d2e7",nombre:"Hip thrust",musculo:"Glúteo",series:3,rMin:10,rMax:12,pesoIni:30},
+  ]},
+  { dia:"DÍA 3", foco:"Espalda · Hombro", sub:"Hack squat · Glúteo", ejercicios:[
+    {id:"d3e1",nombre:"Remo unilateral",musculo:"Espalda",series:3,rMin:10,rMax:12,pesoIni:27.5},
+    {id:"d3e2",nombre:"Pájaros máquina",musculo:"Hombro post.",series:3,rMin:12,rMax:15,pesoIni:15},
+    {id:"d3e3",nombre:"Elevación lateral polea",musculo:"Hombro lat.",series:2,rMin:12,rMax:15,pesoIni:4},
+    {id:"d3e4",nombre:"Aperturas máquina",musculo:"Pecho",series:2,rMin:12,rMax:15,pesoIni:40},
+    {id:"d3e5",nombre:"Hack squat",musculo:"Cuádriceps",series:3,rMin:8,rMax:10,pesoIni:40},
+    {id:"d3e6",nombre:"Abducción",musculo:"Glúteo medio",series:3,rMin:12,rMax:15,pesoIni:70},
+  ]},
+];
+
+const MUSC_COLOR = {
+  "Pecho":"#C084FC","Espalda":"#A855F7","Hombro":"#D8B4FE",
+  "Hombro lat.":"#D8B4FE","Hombro post.":"#D8B4FE",
+  "Pierna":"#6AB880","Cuádriceps":"#6AB880","Femoral":"#6AB880",
+  "Glúteo":"#E0C8FF","Glúteo medio":"#E0C8FF",
+  "Bíceps":"#9A7FD0","Tríceps":"#9A7FD0",
+};
+
+// ─── ESTADO ───────────────────────────────────────────────────────
+let diaActivo = 0;
+let formData = {}; // {ejId: {0:{peso,reps}, 1:...}}
+let historial = [];
+let corporal  = [];
+
+function cargarDatos() {
+  try { historial = JSON.parse(localStorage.getItem('cm_historial') || '[]'); } catch(e){}
+  try { corporal  = JSON.parse(localStorage.getItem('cm_corporal')  || '[]'); } catch(e){}
+}
+function saveHistorial() { localStorage.setItem('cm_historial', JSON.stringify(historial)); }
+function saveCorporal()  { localStorage.setItem('cm_corporal',  JSON.stringify(corporal));  }
+
+// ─── HELPERS ──────────────────────────────────────────────────────
+function getPesoSugerido(ej) {
+  const sesiones = historial.filter(s => s.diaIdx === diaActivo && s.ejercicios?.[ej.id]);
+  if (!sesiones.length) return ej.pesoIni;
+  const ultima = sesiones[sesiones.length-1];
+  const series = ultima.ejercicios[ej.id];
+  if (!series?.some(s=>s.reps)) return ej.pesoIni;
+  const peso = parseFloat(series[0]?.peso) || ej.pesoIni;
+  const todas = series.every(s => parseInt(s.reps) >= ej.rMax);
+  const step = peso <= 10 ? 1.25 : 2.5;
+  return todas ? peso + step : peso;
+}
+
+function getSignal(ejId, rMin, rMax) {
+  const d = formData[ejId];
+  if (!d) return null;
+  const reps = Object.values(d).map(s=>parseInt(s.reps)||0).filter(r=>r>0);
+  if (!reps.length) return null;
+  const min = Math.min(...reps);
+  const avg = reps.reduce((a,b)=>a+b,0)/reps.length;
+  if (avg >= rMax) return {icon:"↑", text:"Sube peso la próxima sesión", color:"#6AB880", bg:"#0d2015", border:"#6AB88022"};
+  if (min >= rMin) return {icon:"✓", text:"Correcto, consolida", color:"#C084FC", bg:"#1a1030", border:"#C084FC22"};
+  return {icon:"⚠", text:"Revisa técnica o baja peso", color:"#F87171", bg:"#2a0f0f", border:"#F8717122"};
+}
+
+function fmtFecha(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+}
+function fmtFechaCort(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-ES',{day:'numeric',month:'short'});
+}
+
+// ─── RENDER ENTRENAR ─────────────────────────────────────────────
+function renderEntrenar() {
+  const grid = document.getElementById('dia-grid');
+  grid.innerHTML = RUTINA.map((d,i) => `
+    <button class="dia-btn ${i===diaActivo?'active':''}" onclick="setDia(${i})">
+      <div class="dia-num">${d.dia}</div>
+      <div class="dia-foco">${d.foco}</div>
+    </button>`).join('');
+
+  const dia = RUTINA[diaActivo];
+  const hoy = new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('dia-header').innerHTML = `
+    <div style="font-size:18px;font-weight:700;color:#F0ECF8;letter-spacing:-0.02em;">${dia.foco}</div>
+    <div style="font-size:11px;color:#7A6AA0;margin-top:2px;">Pierna · ${dia.sub}</div>
+    <div style="font-size:10px;color:#4A3870;margin-top:6px;font-family:'IBM Plex Mono',monospace;">${hoy}</div>`;
+
+  const cont = document.getElementById('ejercicios-container');
+  cont.innerHTML = dia.ejercicios.map(ej => {
+    const sugerido = getPesoSugerido(ej);
+    const mc = MUSC_COLOR[ej.musculo] || '#9A7FD0';
+    const sig = getSignal(ej.id, ej.rMin, ej.rMax);
+    const sigHtml = sig ? `<div class="signal" style="color:${sig.color};background:${sig.bg};border:1px solid ${sig.border};">${sig.icon} ${sig.text}</div>` : '';
+
+    const seriesHtml = Array.from({length:ej.series},(_,i) => {
+      const peso = formData[ej.id]?.[i]?.peso || '';
+      const reps = formData[ej.id]?.[i]?.reps || '';
+      return `<div class="serie-col">
+        <div class="serie-label">S${i+1}</div>
+        <input type="number" class="serie-input input-peso" placeholder="${sugerido}"
+          value="${peso}" oninput="updateForm('${ej.id}',${i},'peso',this.value)" />
+        <input type="number" class="serie-input input-reps" placeholder="reps"
+          value="${reps}" oninput="updateForm('${ej.id}',${i},'reps',this.value)" />
+      </div>`;
+    }).join('');
+
+    return `<div class="ej-card">
+      <div class="ej-header">
+        <div class="ej-name">${ej.nombre}</div>
+        <div class="ej-tags">
+          <span class="tag" style="background:${mc}22;color:${mc};border:1px solid ${mc}44">${ej.musculo}</span>
+          <span class="tag" style="background:#130F22;color:#6050A0;border:1px solid #2A2040;font-family:monospace">${ej.series}s · ${ej.rMin}–${ej.rMax}r</span>
+        </div>
+        <div class="ej-sugerido-row">
+          <div><div class="sugerido-label">SUGERIDO</div></div>
+          <div style="text-align:right"><span class="sugerido-val">${sugerido}</span> <span class="sugerido-unit">kg</span></div>
+        </div>
+        <div class="series-row">${seriesHtml}</div>
+        ${sigHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setDia(i) { diaActivo = i; formData = {}; renderEntrenar(); }
+
+function updateForm(ejId, serieIdx, campo, val) {
+  if (!formData[ejId]) formData[ejId] = {};
+  if (!formData[ejId][serieIdx]) formData[ejId][serieIdx] = {peso:'',reps:''};
+  formData[ejId][serieIdx][campo] = val;
+  // Re-render solo la señal
+  const dia = RUTINA[diaActivo];
+  const ej = dia.ejercicios.find(e=>e.id===ejId);
+  if (!ej) return;
+  const cards = document.querySelectorAll('.ej-card');
+  const idx = dia.ejercicios.indexOf(ej);
+  if (cards[idx]) {
+    const existing = cards[idx].querySelector('.signal');
+    if (existing) existing.remove();
+    const sig = getSignal(ejId, ej.rMin, ej.rMax);
+    if (sig) {
+      const div = document.createElement('div');
+      div.className = 'signal';
+      div.style.cssText = `color:${sig.color};background:${sig.bg};border:1px solid ${sig.border}`;
+      div.innerHTML = `${sig.icon} ${sig.text}`;
+      cards[idx].querySelector('.ej-header').appendChild(div);
+    }
+  }
+}
+
+function guardarSesion() {
+  const dia = RUTINA[diaActivo];
+  const ejercicios = {};
+  dia.ejercicios.forEach(ej => {
+    ejercicios[ej.id] = Array.from({length:ej.series},(_,i) => formData[ej.id]?.[i] || {peso:'',reps:''});
+  });
+  const sesion = {
+    fecha: new Date().toISOString(),
+    fechaLabel: fmtFecha(new Date().toISOString()),
+    diaIdx: diaActivo,
+    diaLabel: dia.dia,
+    foco: dia.foco,
+    ejercicios
+  };
+  historial.push(sesion);
+  saveHistorial();
+  formData = {};
+  renderEntrenar();
+  renderHistorial();
+  switchTab('historial');
+}
+
+// ─── RENDER HISTORIAL ─────────────────────────────────────────────
+function renderHistorial() {
+  const cont = document.getElementById('historial-container');
+  if (!historial.length) {
+    cont.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">◆</div>
+      <div class="empty-text">Sin sesiones registradas</div>
+      <div class="empty-sub">Completa tu primer entrenamiento</div>
+    </div>`;
+    return;
+  }
+  const reversed = [...historial].reverse();
+  cont.innerHTML = `<div class="label-mono">${historial.length} SESIONES REGISTRADAS</div>` +
+    reversed.map((s,i) => {
+      const dia = RUTINA[s.diaIdx];
+      const ejHtml = dia?.ejercicios.map(ej => {
+        const series = s.ejercicios?.[ej.id];
+        if (!series?.some(x=>x.peso||x.reps)) return '';
+        const seriesHtml = series.map((sr,si) =>
+          (sr.peso||sr.reps) ? `<div class="serie-hist-block"><div class="serie-hist-peso">${sr.peso||'—'}</div><div class="serie-hist-reps">${sr.reps||'—'}</div></div>` : ''
+        ).join('');
+        return `<div><div class="ej-hist-name">${ej.nombre}</div><div class="series-hist">${seriesHtml}</div></div>`;
+      }).join('') || '';
+
+      return `<div class="sesion-card" id="sc-${i}">
+        <div class="sesion-header" onclick="toggleSesion(${i})">
+          <div>
+            <div class="sesion-badge">${s.diaLabel}</div>
+            <div class="sesion-foco">${s.foco}</div>
+            <div class="sesion-fecha">${s.fechaLabel || fmtFecha(s.fecha)}</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-secondary" onclick="event.stopPropagation();exportarSesion(${historial.length-1-i})">EXPORTAR</button>
+            <span style="color:#3A2860;font-size:12px" id="arrow-${i}">▼</span>
+          </div>
+        </div>
+        <div class="sesion-body" id="sb-${i}">${ejHtml}</div>
+      </div>`;
+    }).join('');
+}
+
+function toggleSesion(i) {
+  const body  = document.getElementById(`sb-${i}`);
+  const card  = document.getElementById(`sc-${i}`);
+  const arrow = document.getElementById(`arrow-${i}`);
+  const open  = body.classList.toggle('open');
+  card.classList.toggle('open', open);
+  arrow.textContent = open ? '▲' : '▼';
+}
+
+// ─── EXPORTAR ─────────────────────────────────────────────────────
+function exportarSesion(idx) {
+  const s = historial[idx];
+  const dia = RUTINA[s.diaIdx];
+  let txt = `◆ CARBON METHOD\n${s.diaLabel} — ${s.foco}\n${s.fechaLabel||fmtFecha(s.fecha)}\n\n`;
+  dia?.ejercicios.forEach(ej => {
+    const series = s.ejercicios?.[ej.id];
+    if (!series?.some(x=>x.peso||x.reps)) return;
+    txt += `${ej.nombre}\n`;
+    series.forEach((sr,i) => { if(sr.peso||sr.reps) txt += `  S${i+1}: ${sr.peso||'—'}kg × ${sr.reps||'—'} reps\n`; });
+    txt += '\n';
+  });
+  document.getElementById('modal-text').value = txt;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+function copyAndClose() {
+  const txt = document.getElementById('modal-text').value;
+  if (navigator.clipboard) navigator.clipboard.writeText(txt);
+  closeModal();
+}
+
+// ─── CUERPO ───────────────────────────────────────────────────────
+function initCuerpo() {
+  const hoy = new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('fecha-cuerpo').textContent = `MEDICIÓN · ${hoy}`;
+}
+
+function guardarCorporal() {
+  const peso    = document.getElementById('inp-peso').value;
+  const musculo = document.getElementById('inp-musculo').value;
+  const grasa   = document.getElementById('inp-grasa').value;
+  if (!peso) return;
+  corporal.push({ fecha: new Date().toISOString(), fechaLabel: fmtFechaCort(new Date().toISOString()), peso, musculo, grasa });
+  saveCorporal();
+  document.getElementById('inp-peso').value = '';
+  document.getElementById('inp-musculo').value = '';
+  document.getElementById('inp-grasa').value = '';
+  renderHistorialCorporal();
+  renderChartCorp();
+}
+
+function renderHistorialCorporal() {
+  const cont = document.getElementById('historial-corporal');
+  if (!corporal.length) { cont.innerHTML = ''; return; }
+  cont.innerHTML = `<div class="label-mono">HISTORIAL CORPORAL</div>` +
+    [...corporal].reverse().slice(0,15).map(r => `
+      <div class="medicion-row">
+        <div class="medicion-fecha">${r.fechaLabel}</div>
+        <div class="medicion-vals">
+          ${r.peso    ? `<div class="medicion-val"><div class="medicion-num" style="color:#C084FC">${r.peso}</div><div class="medicion-lbl">kg</div></div>` : ''}
+          ${r.musculo ? `<div class="medicion-val"><div class="medicion-num" style="color:#6AB880">${r.musculo}</div><div class="medicion-lbl">musc</div></div>` : ''}
+          ${r.grasa   ? `<div class="medicion-val"><div class="medicion-num" style="color:#E0C8FF">${r.grasa}</div><div class="medicion-lbl">grasa%</div></div>` : ''}
+        </div>
+      </div>`).join('');
+}
+
+// ─── GRÁFICOS ─────────────────────────────────────────────────────
+let chartCorp = null;
+let chartEj   = null;
+
+const CHART_DEFAULTS = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#130F22', borderColor:'#2A2040', borderWidth:1, titleColor:'#7A6AA0', bodyColor:'#C084FC', titleFont:{family:'IBM Plex Mono'}, bodyFont:{family:'IBM Plex Mono'} }},
+  scales:{
+    x:{ ticks:{color:'#4A3870',font:{size:9,family:'IBM Plex Mono'}}, grid:{color:'#1E1638'} },
+    y:{ ticks:{color:'#4A3870',font:{size:9,family:'IBM Plex Mono'}}, grid:{color:'#1E1638'} }
+  }
+};
+
+function renderChartCorp() {
+  const ctx = document.getElementById('chart-corp').getContext('2d');
+  if (chartCorp) chartCorp.destroy();
+  if (corporal.length < 2) {
+    ctx.fillStyle = '#3A2860'; ctx.font = '12px IBM Plex Mono';
+    ctx.fillText('Necesitas al menos 2 mediciones', 20, 90);
+    return;
+  }
+  const labels = corporal.map(r => r.fechaLabel || fmtFechaCort(r.fecha));
+  chartCorp = new Chart(ctx, { type:'line', data:{
+    labels,
+    datasets:[
+      { label:'Peso', data:corporal.map(r=>parseFloat(r.peso)||null), borderColor:'#C084FC', backgroundColor:'#C084FC22', tension:0.3, pointBackgroundColor:'#C084FC', pointRadius:4 },
+      { label:'Músculo', data:corporal.map(r=>parseFloat(r.musculo)||null), borderColor:'#6AB880', backgroundColor:'#6AB88022', tension:0.3, pointBackgroundColor:'#6AB880', pointRadius:4 },
+      { label:'Grasa', data:corporal.map(r=>parseFloat(r.grasa)||null), borderColor:'#E0C8FF', backgroundColor:'#E0C8FF22', tension:0.3, pointBackgroundColor:'#E0C8FF', pointRadius:4 },
+    ]
+  }, options:{...CHART_DEFAULTS} });
+}
+
+function initEjSelect() {
+  const sel = document.getElementById('ej-select');
+  sel.innerHTML = RUTINA.map(d =>
+    `<optgroup label="${d.dia} · ${d.foco}">` +
+    d.ejercicios.map(ej => `<option value="${ej.id}">${ej.nombre}</option>`).join('') +
+    `</optgroup>`
+  ).join('');
+}
+
+function renderChartEj() {
+  const ejId = document.getElementById('ej-select').value;
+  const ctx = document.getElementById('chart-ej').getContext('2d');
+  if (chartEj) chartEj.destroy();
+
+  const data = historial
+    .filter(s => s.ejercicios?.[ejId]?.some(x=>x.peso))
+    .map(s => {
+      const pesos = s.ejercicios[ejId].map(x=>parseFloat(x.peso)).filter(Boolean);
+      return { fecha: s.fechaLabel || fmtFechaCort(s.fecha), peso: pesos.length ? Math.max(...pesos) : null };
+    }).filter(d=>d.peso);
+
+  if (data.length < 2) {
+    ctx.fillStyle = '#3A2860'; ctx.font = '12px IBM Plex Mono';
+    ctx.clearRect(0,0,400,160);
+    ctx.fillText(data.length===0 ? 'Sin datos para este ejercicio' : 'Necesitas al menos 2 sesiones', 10, 80);
+    return;
+  }
+
+  const accent = RUTINA.flatMap(d=>d.ejercicios).find(e=>e.id===ejId) ? '#C084FC' : '#C084FC';
+  chartEj = new Chart(ctx, { type:'line', data:{
+    labels: data.map(d=>d.fecha),
+    datasets:[{ label:'Peso máx.', data:data.map(d=>d.peso), borderColor:accent, backgroundColor:accent+'22', tension:0.3, pointBackgroundColor:accent, pointRadius:4, borderWidth:2.5 }]
+  }, options:{...CHART_DEFAULTS} });
+}
+
+// ─── CRONÓMETRO ───────────────────────────────────────────────────
+let cronSeg = 0, cronRunning = false, cronInterval = null;
+let cronPreset = 90, cronMode = 'down';
+
+function cronStart() {
+  if (cronMode === 'down') cronSeg = cronPreset;
+  cronRunning = true;
+  document.getElementById('btn-start').style.display = 'none';
+  document.getElementById('btn-stop').style.display  = 'inline-block';
+  document.getElementById('btn-reset').style.display = 'inline-block';
+  document.getElementById('cronometro').style.borderBottomColor = '#C084FC44';
+  cronInterval = setInterval(() => {
+    if (cronMode === 'down') {
+      cronSeg--;
+      if (cronSeg <= 0) { cronSeg = 0; cronStop(); if(navigator.vibrate) navigator.vibrate([300,100,300]); }
+    } else { cronSeg++; }
+    updateCronDisplay();
+  }, 1000);
+  updateCronDisplay();
+}
+
+function cronStop() {
+  cronRunning = false;
+  clearInterval(cronInterval);
+  document.getElementById('btn-start').style.display = 'inline-block';
+  document.getElementById('btn-stop').style.display  = 'none';
+  document.getElementById('cronometro').style.borderBottomColor = '#1E1830';
+}
+
+function cronReset() {
+  cronStop();
+  cronSeg = cronMode === 'down' ? cronPreset : 0;
+  document.getElementById('btn-reset').style.display = 'none';
+  updateCronDisplay();
+}
+
+function updateCronDisplay() {
+  const mm = String(Math.floor(cronSeg/60)).padStart(2,'0');
+  const ss = String(cronSeg%60).padStart(2,'0');
+  const el = document.getElementById('cron-display');
+  el.textContent = `${mm}:${ss}`;
+  el.className = cronRunning ? 'running' : (cronSeg > 0 ? 'paused' : '');
+  if (cronMode === 'down' && cronPreset > 0) {
+    const pct = (cronSeg / cronPreset) * 100;
+    document.getElementById('cron-progress-bar').style.width = pct + '%';
+  }
+}
+
+function setPreset(t) {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  if (t === 0) {
+    cronMode = 'up'; cronPreset = 0; cronSeg = 0;
+    document.getElementById('preset-libre').classList.add('active');
+  } else {
+    cronMode = 'down'; cronPreset = t; cronSeg = t;
+    document.querySelectorAll('.preset-btn').forEach(b => { if(b.textContent === t+'s') b.classList.add('active'); });
+  }
+  updateCronDisplay();
+}
+
+function togglePanel() {
+  const p = document.getElementById('cron-panel');
+  p.classList.toggle('open');
+}
+
+// ─── NAVEGACIÓN ───────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+  document.getElementById(`nav-${name}`).classList.add('active');
+  if (name === 'progresion') { renderChartCorp(); renderChartEj(); }
+  if (name === 'historial')  { renderHistorial(); }
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────
+cargarDatos();
+renderEntrenar();
+renderHistorial();
+renderHistorialCorporal();
+initCuerpo();
+initEjSelect();
+updateCronDisplay();
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js");}</script>
+</body>
+</html>

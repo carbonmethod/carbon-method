@@ -1,0 +1,24 @@
+{
+  "name": "Carbon Method",
+  "short_name": "Carbon",
+  "description": "Tu entrenador de recomposición corporal",
+  "start_url": "/carbon-method/",
+  "display": "standalone",
+  "background_color": "#08060F",
+  "theme_color": "#08060F",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
