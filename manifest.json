@@ -1,7 +1,7 @@
 {
   "name": "Carbon Method",
   "short_name": "Carbon",
-  "description": "Tu entrenador de recomposición corporal",
+  "description": "Your body recomposition trainer",
   "start_url": "/carbon-method/",
   "display": "standalone",
   "background_color": "#0d0d0f",
