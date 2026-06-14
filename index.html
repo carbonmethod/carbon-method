@@ -549,38 +549,37 @@ function renderObStep(){
   const nextBtn=document.getElementById('ob-next');
   if(nextBtn){
     nextBtn.textContent=obStep===OB_STEPS.length-1?(lang==='en'?'Start':'Empezar'):(lang==='en'?'Continue':'Continuar');
-    nextBtn.classList.toggle('ready', obAnswers[obStep]!==undefined);
+    nextBtn.classList.toggle('ready',obAnswers[obStep]!==undefined);
   }
   const content=document.getElementById('ob-content');
-  content.innerHTML=
-    '<div class="ob-step">'
-    +'<div class="ob-q">'+step.q+'</div>'
-    +(step.sub?'<div class="ob-sub">'+step.sub+'</div>':'')
-    +'<div class="ob-opts" id="ob-opts-list">'
-    +step.opts.map((o,idx)=>{
-      const sel=obAnswers[obStep]===o.v?'sel':'';
-      return '<button class="ob-btn '+sel+'" data-idx="'+idx+'">'
-        +o.label+(o.sub?'<span class="ob-btn-sub">'+o.sub+'</span>':'')
-        +'</button>';
-    }).join('')
-    +'</div></div>';
-  // Attach listener via delegation — works reliably on iOS Safari PWA
-  const optsList=document.getElementById('ob-opts-list');
-  if(optsList){
-    optsList.addEventListener('click',function(e){
-      const btn=e.target.closest('.ob-btn');
-      if(!btn)return;
+  let innerH='<div class="ob-step"><div class="ob-q">'+step.q+'</div>';
+  if(step.sub)innerH+='<div class="ob-sub">'+step.sub+'</div>';
+  innerH+='<div class="ob-opts" id="ob-opts-list">';
+  step.opts.forEach((o,idx)=>{
+    const sel=obAnswers[obStep]===o.v?' sel':'';
+    innerH+='<button class="ob-btn'+sel+'" data-idx="'+idx+'">';
+    innerH+=o.label;
+    if(o.sub)innerH+='<span class="ob-btn-sub">'+o.sub+'</span>';
+    innerH+='</button>';
+  });
+  innerH+='</div></div>';
+  content.innerHTML=innerH;
+  // Direct addEventListener on each button — reliable on all iOS Safari PWA versions
+  document.querySelectorAll('#ob-opts-list .ob-btn').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.preventDefault();
       obSelect(btn);
-    },{once:false});
-  }
+    });
+  });
 }
 
 function obSelect(btn){
   const idx=parseInt(btn.dataset.idx);
+  if(isNaN(idx))return;
   const val=OB_STEPS[obStep].opts[idx].v;
   obAnswers[obStep]=val;
-  document.querySelectorAll('#ob-opts-list .ob-btn').forEach((b,i)=>{
-    b.classList.toggle('sel', i===idx);
+  document.querySelectorAll('#ob-opts-list .ob-btn').forEach(function(b,i){
+    b.classList.toggle('sel',i===idx);
   });
   const nextBtn=document.getElementById('ob-next');
   if(nextBtn)nextBtn.classList.add('ready');
